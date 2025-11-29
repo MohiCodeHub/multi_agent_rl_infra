@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f0e8;
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #2d2d2d;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 42px;
+            font-weight: 300;
+            margin-bottom: 40px;
+            letter-spacing: -1px;
+        }
+        
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 40px;
+        }
+        
+        .products h2, .cart-section h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #888;
+            margin-bottom: 20px;
+        }
+        
+        .product-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .product {
+            background: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        
+        .product-image {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%);
+            border-radius: 8px;
+        }
+        
+        .product-info {
+            flex: 1;
+        }
+        
+        .product-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .product-price {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .product-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        
+        input[type="number"] {
+            width: 70px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #2d2d2d;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #2d2d2d;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+        
+        button:hover {
+            background: #444;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #fff;
+            color: #2d2d2d;
+            border: 1px solid #2d2d2d;
+        }
+        
+        .btn-secondary:hover {
+            background: #f5f5f5;
+        }
+        
+        .cart-section {
+            background: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            height: fit-content;
+        }
+        
+        .cart-items {
+            margin-bottom: 20px;
+        }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+        
+        .cart-empty {
+            color: #888;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .coupon-section {
+            margin: 20px 0;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .coupon-input {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .coupon-input input {
+            flex: 1;
+        }
+        
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            font-weight: 600;
+            padding: 20px 0;
+            border-top: 2px solid #2d2d2d;
+            margin-top: 20px;
+        }
+        
+        .discount {
+            color: #2d8a2d;
+            font-size: 14px;
+        }
+        
+        .error {
+            background: #fff0f0;
+            border: 1px solid #ffcdd2;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .success {
+            background: #e8f5e9;
+            border: 1px solid #a5d6a7;
+            color: #2e7d32;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+        }
+        
+        .success.show {
+            display: block;
+        }
+        
+        .success h3 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .checkout-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            margin-top: 16px;
+        }
+        
+        @media (max-width: 768px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Shop</h1>
+        
+        <div class="error" id="errorMessage"></div>
+        <div class="success" id="successMessage">
+            <h3>Order confirmed!</h3>
+            <p>Thank you for your purchase.</p>
+        </div>
+        
+        <div class="layout" id="shopLayout">
+            <div class="products">
+                <h2>Products</h2>
+                <div class="product-list">
+                    <div class="product" data-product="A" data-price="10">
+                        <div class="product-image"></div>
+                        <div class="product-info">
+                            <div class="product-name">Product A</div>
+                            <div class="product-price">$10.00</div>
+                        </div>
+                        <div class="product-actions">
+                            <div>
+                                <label for="qty-a">Quantity</label>
+                                <input type="number" id="qty-a" value="1" min="1" max="10" aria-label="Quantity for Product A">
+                            </div>
+                            <button onclick="addToCart('A', 10, 'qty-a')" aria-label="Add to Cart Product A">Add to Cart</button>
+                        </div>
+                    </div>
+                    
+                    <div class="product" data-product="B" data-price="20">
+                        <div class="product-image"></div>
+                        <div class="product-info">
+                            <div class="product-name">Product B</div>
+                            <div class="product-price">$20.00</div>
+                        </div>
+                        <div class="product-actions">
+                            <div>
+                                <label for="qty-b">Quantity</label>
+                                <input type="number" id="qty-b" value="1" min="1" max="10" aria-label="Quantity for Product B">
+                            </div>
+                            <button onclick="addToCart('B', 20, 'qty-b')" aria-label="Add to Cart Product B">Add to Cart</button>
+                        </div>
+                    </div>
+                    
+                    <div class="product" data-product="C" data-price="15">
+                        <div class="product-image"></div>
+                        <div class="product-info">
+                            <div class="product-name">Product C</div>
+                            <div class="product-price">$15.00</div>
+                        </div>
+                        <div class="product-actions">
+                            <div>
+                                <label for="qty-c">Quantity</label>
+                                <input type="number" id="qty-c" value="1" min="1" max="10" aria-label="Quantity for Product C">
+                            </div>
+                            <button onclick="addToCart('C', 15, 'qty-c')" aria-label="Add to Cart Product C">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="cart-section">
+                <h2>Your Cart</h2>
+                <div class="cart-items" id="cartItems">
+                    <div class="cart-empty">Your cart is empty</div>
+                </div>
+                
+                <div class="coupon-section">
+                    <label for="couponCode">Coupon Code</label>
+                    <div class="coupon-input">
+                        <input type="text" id="couponCode" placeholder="Enter code" aria-label="Coupon Code">
+                        <button class="btn-secondary" onclick="applyCoupon()" aria-label="Apply Coupon">Apply Coupon</button>
+                    </div>
+                    <div class="discount" id="discountInfo" style="margin-top: 8px; display: none;"></div>
+                </div>
+                
+                <div class="cart-total">
+                    <span>Total</span>
+                    <span id="cartTotal">$0.00</span>
+                </div>
+                
+                <button class="checkout-btn" onclick="checkout()" aria-label="Checkout">Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cart = [];
+        let discount = 0;
+        let appliedCoupon = null;
+        
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const shopLayout = document.getElementById('shopLayout');
+        const cartItems = document.getElementById('cartItems');
+        const cartTotal = document.getElementById('cartTotal');
+        const discountInfo = document.getElementById('discountInfo');
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        function addToCart(product, price, qtyInputId) {
+            const qtyInput = document.getElementById(qtyInputId);
+            const qty = parseInt(qtyInput.value);
+            
+            if (qty < 1 || qty > 10) {
+                showError('Quantity must be between 1 and 10');
+                return;
+            }
+            
+            const existingItem = cart.find(item => item.product === product);
+            if (existingItem) {
+                existingItem.qty += qty;
+                if (existingItem.qty > 10) {
+                    existingItem.qty = 10;
+                    showError('Maximum quantity is 10 per product');
+                }
+            } else {
+                cart.push({ product, price, qty });
+            }
+            
+            qtyInput.value = 1;
+            renderCart();
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            renderCart();
+        }
+
+        function renderCart() {
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<div class="cart-empty">Your cart is empty</div>';
+                cartTotal.textContent = '$0.00';
+                return;
+            }
+            
+            let html = '';
+            let subtotal = 0;
+            
+            cart.forEach((item, index) => {
+                const itemTotal = item.price * item.qty;
+                subtotal += itemTotal;
+                html += `
+                    <div class="cart-item">
+                        <span>Product ${item.product} x${item.qty}</span>
+                        <span>$${itemTotal.toFixed(2)} <button onclick="removeFromCart(${index})" style="padding:4px 8px;font-size:12px;">×</button></span>
+                    </div>
+                `;
+            });
+            
+            cartItems.innerHTML = html;
+            
+            const total = subtotal * (1 - discount);
+            cartTotal.textContent = `$${total.toFixed(2)}`;
+        }
+
+        function applyCoupon() {
+            const code = document.getElementById('couponCode').value.trim().toUpperCase();
+            
+            if (code === 'SAVE10') {
+                discount = 0.1;
+                appliedCoupon = code;
+                discountInfo.textContent = '10% discount applied!';
+                discountInfo.style.display = 'block';
+                renderCart();
+            } else if (code === 'SAVE20') {
+                discount = 0.2;
+                appliedCoupon = code;
+                discountInfo.textContent = '20% discount applied!';
+                discountInfo.style.display = 'block';
+                renderCart();
+            } else {
+                showError('Invalid coupon code');
+                discount = 0;
+                appliedCoupon = null;
+                discountInfo.style.display = 'none';
+                renderCart();
+            }
+        }
+
+        function checkout() {
+            if (cart.length === 0) {
+                showError('Cart must not be empty to checkout');
+                return;
+            }
+            
+            shopLayout.style.display = 'none';
+            successMessage.classList.add('show');
+        }
+    </script>
+</body>
+</html>
+

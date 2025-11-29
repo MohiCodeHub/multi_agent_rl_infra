@@ -1,0 +1,45 @@
+# LLM Configuration
+llm:
+  provider: "anthropic"  # or "openai"
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 4096
+  temperature: 0.7
+
+# Mock Sites
+sites:
+  base_url: "http://localhost:3000"
+  names:
+    - signup
+    - todo
+    - cart
+    - settings
+    - wizard
+
+# Task Generation
+generation:
+  tasks_per_difficulty: 50
+  difficulties: [1, 2, 3, 4, 5]
+  max_generation_retries: 3
+
+# Oracle Validation
+oracle:
+  max_steps_multiplier: 2  # Allow 2x requested difficulty
+  timeout_seconds: 30
+
+# Evaluation
+evaluation:
+  max_inference_calls_buffer: 2  # expected_calls + buffer
+  action_timeout_ms: 500
+  page_load_timeout_ms: 5000
+
+# Reward Function
+reward:
+  action_weight: 0.6
+  inference_weight: 0.4
+  action_deviation_penalty: 0.15
+  inference_deviation_penalty: 0.05
+
+# Token Counting
+tokens:
+  encoding: "cl100k_base"
+

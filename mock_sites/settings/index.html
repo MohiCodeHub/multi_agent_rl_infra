@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            background: #1c1c1e;
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 34px;
+            font-weight: 700;
+            margin-bottom: 32px;
+        }
+        
+        .section {
+            background: #2c2c2e;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8e8e93;
+            padding: 16px 16px 8px;
+        }
+        
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #38383a;
+        }
+        
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+        
+        .setting-label {
+            font-size: 17px;
+        }
+        
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            width: 51px;
+            height: 31px;
+        }
+        
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #39393d;
+            border-radius: 31px;
+            transition: 0.3s;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 27px;
+            width: 27px;
+            left: 2px;
+            bottom: 2px;
+            background-color: #fff;
+            border-radius: 50%;
+            transition: 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .toggle input:checked + .toggle-slider {
+            background-color: #30d158;
+        }
+        
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        
+        /* Select */
+        .select-wrapper {
+            position: relative;
+        }
+        
+        select {
+            appearance: none;
+            background: #636366;
+            border: none;
+            padding: 8px 32px 8px 12px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        
+        select:focus {
+            outline: none;
+        }
+        
+        .select-wrapper::after {
+            content: '›';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%) rotate(90deg);
+            color: #8e8e93;
+            pointer-events: none;
+        }
+        
+        /* Buttons */
+        .button-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        
+        button:hover {
+            transform: scale(0.98);
+        }
+        
+        button:active {
+            opacity: 0.7;
+        }
+        
+        .btn-primary {
+            background: #0a84ff;
+            color: #fff;
+        }
+        
+        .btn-secondary {
+            background: #636366;
+            color: #fff;
+        }
+        
+        .error {
+            background: #ff453a;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 15px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .success {
+            background: #30d158;
+            color: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 17px;
+            font-weight: 600;
+            display: none;
+        }
+        
+        .success.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Settings</h1>
+        
+        <div class="error" id="errorMessage"></div>
+        <div class="success" id="successMessage">Settings saved successfully</div>
+        
+        <div class="section">
+            <div class="section-title">Notifications</div>
+            <div class="setting-row">
+                <label class="setting-label" for="emailNotifications">Email Notifications</label>
+                <label class="toggle">
+                    <input type="checkbox" id="emailNotifications" checked aria-label="Email Notifications">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-row">
+                <label class="setting-label" for="smsNotifications">SMS Notifications</label>
+                <label class="toggle">
+                    <input type="checkbox" id="smsNotifications" aria-label="SMS Notifications">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Appearance</div>
+            <div class="setting-row">
+                <label class="setting-label" for="darkMode">Dark Mode</label>
+                <label class="toggle">
+                    <input type="checkbox" id="darkMode" aria-label="Dark Mode">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Preferences</div>
+            <div class="setting-row">
+                <label class="setting-label" for="language">Language</label>
+                <div class="select-wrapper">
+                    <select id="language" aria-label="Language">
+                        <option value="English" selected>English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                    </select>
+                </div>
+            </div>
+            <div class="setting-row">
+                <label class="setting-label" for="timezone">Timezone</label>
+                <div class="select-wrapper">
+                    <select id="timezone" aria-label="Timezone">
+                        <option value="UTC" selected>UTC</option>
+                        <option value="EST">EST</option>
+                        <option value="PST">PST</option>
+                        <option value="GMT">GMT</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-row">
+            <button class="btn-secondary" onclick="resetDefaults()" aria-label="Reset to Defaults">Reset to Defaults</button>
+            <button class="btn-primary" onclick="saveSettings()" aria-label="Save Settings">Save Settings</button>
+        </div>
+    </div>
+
+    <script>
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        
+        // Store initial values
+        const defaults = {
+            emailNotifications: true,
+            smsNotifications: false,
+            darkMode: false,
+            language: 'English',
+            timezone: 'UTC'
+        };
+        
+        let initial = { ...defaults };
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            successMessage.classList.remove('show');
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        function showSuccess() {
+            successMessage.classList.add('show');
+            errorMessage.classList.remove('show');
+            setTimeout(() => {
+                successMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        function getCurrentValues() {
+            return {
+                emailNotifications: document.getElementById('emailNotifications').checked,
+                smsNotifications: document.getElementById('smsNotifications').checked,
+                darkMode: document.getElementById('darkMode').checked,
+                language: document.getElementById('language').value,
+                timezone: document.getElementById('timezone').value
+            };
+        }
+
+        function hasChanges() {
+            const current = getCurrentValues();
+            return Object.keys(initial).some(key => initial[key] !== current[key]);
+        }
+
+        function saveSettings() {
+            if (!hasChanges()) {
+                showError('Must change at least one setting before saving');
+                return;
+            }
+            
+            // Update initial values to current
+            initial = getCurrentValues();
+            showSuccess();
+        }
+
+        function resetDefaults() {
+            document.getElementById('emailNotifications').checked = defaults.emailNotifications;
+            document.getElementById('smsNotifications').checked = defaults.smsNotifications;
+            document.getElementById('darkMode').checked = defaults.darkMode;
+            document.getElementById('language').value = defaults.language;
+            document.getElementById('timezone').value = defaults.timezone;
+        }
+    </script>
+</body>
+</html>
+
