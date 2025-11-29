@@ -127,6 +127,10 @@ class Task:
     oracle_tokens: Optional[int] = None
     validated: bool = False
     
+    # From template-based generation (optional)
+    # Contains the expected action sequence for template-generated tasks
+    expected_actions: Optional[List[Dict[str, str]]] = None
+    
     @property
     def expected_inference_calls(self) -> int:
         return max(1, self.estimated_replans)
@@ -144,7 +148,8 @@ class Task:
             "replan_reasoning": self.replan_reasoning,
             "min_actions": self.min_actions,
             "oracle_tokens": self.oracle_tokens,
-            "validated": self.validated
+            "validated": self.validated,
+            "expected_actions": self.expected_actions
         }
     
     @classmethod
@@ -161,7 +166,8 @@ class Task:
             replan_reasoning=data["replan_reasoning"],
             min_actions=data.get("min_actions"),
             oracle_tokens=data.get("oracle_tokens"),
-            validated=data.get("validated", False)
+            validated=data.get("validated", False),
+            expected_actions=data.get("expected_actions")
         )
 
 
