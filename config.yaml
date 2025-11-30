@@ -28,9 +28,9 @@ oracle:
 
 # Evaluation
 evaluation:
-  max_inference_calls_buffer: 2  # expected_calls + buffer
-  action_timeout_ms: 500
-  page_load_timeout_ms: 5000
+  max_inference_calls_buffer: 3  # expected_calls + buffer
+  action_timeout_ms: 1200
+  page_load_timeout_ms: 8000
 
 # Reward Function
 reward:

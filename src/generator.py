@@ -115,38 +115,38 @@ SITE_ACTION_TEMPLATES: Dict[str, Dict[int, List[Dict[str, Any]]]] = {
     },
     "settings": {
         1: [
-            {"actions": [{"action": "click", "element": "Dark Mode"}],
-             "task": "Toggle the Dark Mode setting on (just click the toggle, don't save)",
+            {"actions": [{"action": "click", "element": "Email Alerts"}],
+             "task": "Toggle Email Alerts on (no save)",
              "success_hints": []},
         ],
         2: [
             {"actions": [{"action": "click", "element": "Dark Mode"},
-                        {"action": "click", "element": "Save Settings"}],
-             "task": "Enable Dark Mode and save the settings",
+                        {"action": "click", "element": "Save"}],
+             "task": "Enable Dark Mode and click Save",
              "success_hints": ["Settings saved successfully"]},
         ],
         3: [
-            {"actions": [{"action": "click", "element": "SMS Notifications"},
+            {"actions": [{"action": "click", "element": "SMS Alerts"},
                         {"action": "click", "element": "Dark Mode"},
-                        {"action": "click", "element": "Save Settings"}],
-             "task": "Enable SMS Notifications and Dark Mode, then click Save Settings",
+                        {"action": "click", "element": "Save"}],
+             "task": "Enable SMS Alerts and Dark Mode, then click Save",
              "success_hints": ["Settings saved successfully"]},
         ],
         4: [
-            {"actions": [{"action": "click", "element": "SMS Notifications"},
+            {"actions": [{"action": "click", "element": "SMS Alerts"},
                         {"action": "click", "element": "Dark Mode"},
                         {"action": "select", "element": "Language", "value": "Spanish"},
-                        {"action": "click", "element": "Save Settings"}],
-             "task": "Enable SMS Notifications, Dark Mode, change language to Spanish, and click Save Settings",
+                        {"action": "click", "element": "Save"}],
+             "task": "Enable SMS Alerts, Dark Mode, change language to Spanish, and click Save",
              "success_hints": ["Settings saved successfully"]},
         ],
         5: [
-            {"actions": [{"action": "click", "element": "Email Notifications"},
-                        {"action": "click", "element": "SMS Notifications"},
+            {"actions": [{"action": "click", "element": "Email Alerts"},
+                        {"action": "click", "element": "SMS Alerts"},
                         {"action": "click", "element": "Dark Mode"},
-                        {"action": "select", "element": "Language", "value": "French"},
-                        {"action": "click", "element": "Save Settings"}],
-             "task": "Toggle Email Notifications off, enable SMS and Dark Mode, change language to French, and click Save Settings",
+                        {"action": "select", "element": "Language", "value": "English"},
+                        {"action": "click", "element": "Save"}],
+             "task": "Toggle Email Alerts, enable SMS Alerts and Dark Mode, set language to English, then Save",
              "success_hints": ["Settings saved successfully"]},
         ],
     },
@@ -286,7 +286,8 @@ class TaskGenerator:
         site: str,
         target_difficulty: int,
         env: WebEnvironment,
-        use_templates: bool = True
+        use_templates: bool = True,
+        existing_tasks: List[Task] = None
     ) -> Optional[Task]:
         """Generate a task for a given site and difficulty.
         
@@ -296,6 +297,7 @@ class TaskGenerator:
             env: The web environment
             use_templates: If True, use predefined templates for guaranteed action counts.
                           If False or no template available, fall back to LLM generation.
+            existing_tasks: List of already-generated tasks to avoid duplicates
         
         Returns:
             A Task object or None if generation failed
@@ -303,17 +305,18 @@ class TaskGenerator:
         
         # Try template-based generation first (guarantees exact action count)
         if use_templates:
-            task = self._generate_from_template(site, target_difficulty)
+            task = self._generate_from_template(site, target_difficulty, existing_tasks or [])
             if task is not None:
                 return task
         
         # Fall back to LLM-based generation
-        return self._generate_from_llm(site, target_difficulty, env)
+        return self._generate_from_llm(site, target_difficulty, env, existing_tasks or [])
     
     def _generate_from_template(
         self,
         site: str,
-        target_difficulty: int
+        target_difficulty: int,
+        existing_tasks: List[Task]
     ) -> Optional[Task]:
         """Generate a task from predefined templates.
         
@@ -330,9 +333,25 @@ class TaskGenerator:
         if target_difficulty not in site_templates:
             return None
         
-        # Pick a random template for variety
+        # Collect descriptions of existing tasks to avoid repeats
+        existing_descriptions = set()
+        for t in existing_tasks:
+            if t.site == site:
+                existing_descriptions.add(t.description.strip().lower())
+        
+        # Filter out templates that match existing tasks
         templates = site_templates[target_difficulty]
-        template = random.choice(templates)
+        available_templates = [
+            tmpl for tmpl in templates
+            if tmpl["task"].strip().lower() not in existing_descriptions
+        ]
+        
+        # If all templates used, return None to signal no new tasks available
+        if not available_templates:
+            return None
+        
+        # Pick a random template for variety
+        template = random.choice(available_templates)
         
         # Create task from template
         task = Task(
@@ -356,7 +375,8 @@ class TaskGenerator:
         self,
         site: str,
         target_difficulty: int,
-        env: WebEnvironment
+        env: WebEnvironment,
+        existing_tasks: List[Task]
     ) -> Optional[Task]:
         """Generate a task using LLM (fallback when no template available)."""
         

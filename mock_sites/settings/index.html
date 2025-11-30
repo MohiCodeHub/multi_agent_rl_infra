@@ -22,47 +22,76 @@
         .container {
             max-width: 600px;
             margin: 0 auto;
-        }
-        
-        h1 {
-            font-size: 34px;
-            font-weight: 700;
-            margin-bottom: 32px;
-        }
-        
-        .section {
-            background: #2c2c2e;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 24px;
-        }
-        
-        .section-title {
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #8e8e93;
-            padding: 16px 16px 8px;
-        }
-        
-        .setting-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 16px;
-            border-bottom: 1px solid #38383a;
-        }
-        
-        .setting-row:last-child {
-            border-bottom: none;
-        }
-        
-        .setting-label {
-            font-size: 17px;
-        }
-        
-        /* Toggle Switch */
-        .toggle {
+                <div class="container">
+                    <h1>Settings</h1>
+                    <p>Adjust your preferences below.</p>
+                    <div class="card">
+                        <h2>Appearance</h2>
+                        <div class="row">
+                            <label for="theme">Theme</label>
+                            <select id="theme">
+                                <option>Light</option>
+                                <option>Dark</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <label for="fontSize">Font Size</label>
+                            <select id="fontSize">
+                                <option>Small</option>
+                                <option selected>Medium</option>
+                                <option>Large</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>Notifications</h2>
+                        <div class="row">
+                            <label for="emailAlerts">Email Alerts</label>
+                            <input id="emailAlerts" type="checkbox" />
+                        </div>
+                        <div class="row">
+                            <label for="smsAlerts">SMS Alerts</label>
+                            <input id="smsAlerts" type="checkbox" />
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>Localization</h2>
+                        <div class="row">
+                            <label for="language">Language</label>
+                            <select id="language">
+                                <option>English</option>
+                                <option>Spanish</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <label for="timezone">Timezone</label>
+                            <select id="timezone">
+                                <option>UTC</option>
+                                <option>GMT+3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button id="saveBtn">Save</button>
+                        <button id="resetBtn">Reset</button>
+                    </div>
+                    <p id="status" aria-live="polite"></p>
+                </div>
+                <script>
+                const status = document.getElementById('status');
+                document.getElementById('saveBtn').addEventListener('click', () => {
+                    status.textContent = 'Settings saved successfully';
+                });
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    document.getElementById('theme').value = 'Light';
+                    document.getElementById('fontSize').value = 'Medium';
+                    document.getElementById('emailAlerts').checked = false;
+                    document.getElementById('smsAlerts').checked = false;
+                    document.getElementById('language').value = 'English';
+                    document.getElementById('timezone').value = 'UTC';
+                    status.textContent = 'Settings reset to defaults';
+                });
+                </script>
             position: relative;
             width: 51px;
             height: 31px;

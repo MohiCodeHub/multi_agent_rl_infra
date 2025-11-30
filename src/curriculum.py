@@ -38,9 +38,27 @@ class TaskCurriculum:
         max_retries: int = 3
     ):
         """Generate and validate task pool"""
-        
+        def normalize_task(task: Task) -> tuple:
+            td = task.to_dict()
+            desc = td.get("description", "").strip().lower()
+            site = td.get("site", "").strip().lower()
+            actions = td.get("expected_actions") or []
+            return (
+                site,
+                desc,
+                tuple(
+                    (a.get("action"), (a.get("element") or "").strip().lower(), a.get("value", ""))
+                    for a in actions
+                )
+            )
+
         for difficulty in difficulties:
-            self.pool[difficulty] = []
+            # Don't reset if pool already has tasks for this difficulty
+            if difficulty not in self.pool:
+                self.pool[difficulty] = []
+            
+            # Build seen_keys from existing tasks to avoid duplicates
+            seen_keys = {normalize_task(t) for t in self.pool[difficulty]}
             
             print(f"\nGenerating difficulty {difficulty} tasks...")
             
@@ -53,10 +71,17 @@ class TaskCurriculum:
                 # Pick random site
                 site = random.choice(sites)
                 
-                # Generate task
-                task = self.generator.generate(site, difficulty, env)
+                # Generate task, passing existing pool to avoid duplicates
+                existing_for_site = [t for t in self.pool.get(difficulty, []) if t.site == site]
+                task = self.generator.generate(site, difficulty, env, existing_tasks=existing_for_site)
                 
                 if task is None:
+                    continue
+
+                # Skip exact duplicates before spending validation time
+                key = normalize_task(task)
+                if key in seen_keys:
+                    # Already have an identical task plan; try generating another
                     continue
                 
                 # Validate with oracle
@@ -75,6 +100,7 @@ class TaskCurriculum:
                         task.validated = True
                         
                         self.pool[difficulty].append(task)
+                        seen_keys.add(key)
                         print(f"  ✓ Task {task.id}: {result.steps_taken} steps")
                     else:
                         print(f"  ✗ Difficulty mismatch: wanted {difficulty}, got {result.steps_taken}")
@@ -93,13 +119,34 @@ class TaskCurriculum:
     
     def save(self, filename: str = "task_pool.json"):
         """Save task pool to cache"""
-        
-        data = {}
+        def normalize_task_dict(td: Dict) -> tuple:
+            desc = td.get("description", "").strip().lower()
+            site = td.get("site", "").strip().lower()
+            actions = td.get("expected_actions") or []
+            return (
+                site,
+                desc,
+                tuple(
+                    (a.get("action"), (a.get("element") or "").strip().lower(), a.get("value", ""))
+                    for a in actions
+                )
+            )
+
+        seen = set()
+        deduped_serializable: Dict[str, List[Dict]] = {}
         for difficulty, tasks in self.pool.items():
-            data[str(difficulty)] = [task.to_dict() for task in tasks]
-        
+            unique_task_dicts: List[Dict] = []
+            for task in tasks:
+                td = task.to_dict()
+                key = normalize_task_dict(td)
+                if key in seen:
+                    continue
+                seen.add(key)
+                unique_task_dicts.append(td)
+            deduped_serializable[str(difficulty)] = unique_task_dicts
+
         path = self.cache_dir / filename
-        path.write_text(json.dumps(data, indent=2))
+        path.write_text(json.dumps(deduped_serializable, indent=2))
         print(f"Saved task pool to {path}")
     
     def load(self, filename: str = "task_pool.json") -> bool:

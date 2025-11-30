@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--sites", nargs="+", default=["signup", "todo", "cart", "settings", "wizard"])
     parser.add_argument("--difficulties", nargs="+", type=int, default=[1, 2, 3, 4, 5])
     parser.add_argument("--tasks-per-difficulty", type=int, default=10)
+    parser.add_argument("--max-retries", type=int, default=3, help="Max attempts per required task")
     parser.add_argument("--base-url", default="http://localhost:3000")
     parser.add_argument("--output", default="task_pool.json")
     args = parser.parse_args()
@@ -32,14 +33,16 @@ def main():
         print(f"  Sites: {args.sites}")
         print(f"  Difficulties: {args.difficulties}")
         print(f"  Tasks per difficulty: {args.tasks_per_difficulty}")
-        
+
+        # Single pass - only generate the required number of tasks
         curriculum.build_pool(
             sites=args.sites,
             difficulties=args.difficulties,
             tasks_per_difficulty=args.tasks_per_difficulty,
-            env=env
+            env=env,
+            max_retries=args.max_retries
         )
-        
+
         curriculum.save(args.output)
         
         print("\nPool statistics:")
