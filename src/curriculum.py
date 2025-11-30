@@ -98,11 +98,13 @@ class TaskCurriculum:
                         if result.is_valid_for_curriculum(tolerance=0):
                             task.min_actions = result.steps_taken
                             task.oracle_tokens = result.tokens_used
+                            task.oracle_inference_calls = result.inference_calls  # Track actual LLM calls
                             task.validated = True
                             
                             self.pool[difficulty].append(task)
                             seen_keys.add(key)
-                            print(f"  ✓ Task {task.id}: {result.steps_taken}/{result.expected_steps} steps (exact match)")
+                            chained_tag = " [chained]" if task.is_chained else ""
+                            print(f"  ✓ Task {task.id}: {result.steps_taken}/{result.expected_steps} steps, {result.inference_calls} LLM calls{chained_tag}")
                         else:
                             print(f"  ✗ Steps mismatch: expected {result.expected_steps}, got {result.steps_taken}")
                     else:
@@ -110,11 +112,12 @@ class TaskCurriculum:
                         if difficulty <= result.steps_taken <= difficulty + 1:
                             task.min_actions = result.steps_taken
                             task.oracle_tokens = result.tokens_used
+                            task.oracle_inference_calls = result.inference_calls  # Track actual LLM calls
                             task.validated = True
                             
                             self.pool[difficulty].append(task)
                             seen_keys.add(key)
-                            print(f"  ✓ Task {task.id}: {result.steps_taken} steps")
+                            print(f"  ✓ Task {task.id}: {result.steps_taken} steps, {result.inference_calls} LLM calls")
                         else:
                             print(f"  ✗ Difficulty mismatch: wanted {difficulty}, got {result.steps_taken}")
                 else:
@@ -188,12 +191,27 @@ class TaskCurriculum:
     def stats(self) -> Dict:
         """Get pool statistics"""
         
-        return {
-            difficulty: {
-                "count": len(tasks),
-                "avg_min_actions": sum(t.min_actions for t in tasks) / len(tasks) if tasks else 0,
-                "avg_expected_calls": sum(t.expected_inference_calls for t in tasks) / len(tasks) if tasks else 0
-            }
-            for difficulty, tasks in self.pool.items()
-        }
+        stats = {}
+        for difficulty, tasks in self.pool.items():
+            if not tasks:
+                stats[difficulty] = {
+                    "count": 0,
+                    "avg_min_actions": 0,
+                    "avg_expected_calls": 0,
+                    "avg_oracle_calls": 0,
+                    "chained_count": 0
+                }
+            else:
+                chained = [t for t in tasks if t.is_chained]
+                oracle_calls = [t.oracle_inference_calls for t in tasks if t.oracle_inference_calls]
+                
+                stats[difficulty] = {
+                    "count": len(tasks),
+                    "avg_min_actions": sum(t.min_actions for t in tasks if t.min_actions) / len(tasks),
+                    "avg_expected_calls": sum(t.expected_inference_calls for t in tasks) / len(tasks),
+                    "avg_oracle_calls": sum(oracle_calls) / len(oracle_calls) if oracle_calls else 0,
+                    "chained_count": len(chained)
+                }
+        
+        return stats
 

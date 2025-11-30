@@ -37,19 +37,25 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 2. Set API key (Required)
+### 2. Set API key
 
-**Option A: Environment variable** (recommended):
+**Option A: Use hardcoded default** (already configured):
 ```bash
-export ANTHROPIC_API_KEY=your-api-key-here
+# No setup needed - key is hardcoded in src/llm_client.py
 ```
 
-**Option B: Command-line argument**:
+**Option B: Override with command-line argument**:
 ```bash
-python scripts/build_pool.py --api-key your-api-key-here
+# Pass your own key to any script
+python scripts/build_pool.py --api-key sk-ant-...
 ```
 
-You must provide your API key via one of these methods.
+**Option C: Use environment variable**:
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+The system checks in this order: CLI arg → env var → hardcoded default
 
 ### 3. Generate mock websites
 

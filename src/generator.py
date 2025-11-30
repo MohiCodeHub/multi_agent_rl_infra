@@ -22,6 +22,10 @@ SITE_ACTION_TEMPLATES: Dict[str, Dict[int, List[Dict[str, Any]]]] = {
                         {"action": "click", "element": "Sign Up"}],
              "task": "Enter email 'test@example.com' and click Sign Up (will show password required)",
              "success_hints": ["Password must be at least"]},
+            {"actions": [{"action": "type", "element": "Password", "value": "pass"},
+                        {"action": "click", "element": "Sign Up"}],
+             "task": "Enter a short password 'pass' and click Sign Up (will show password length error)",
+             "success_hints": ["Password must be at least"]},
         ],
         3: [
             {"actions": [{"action": "type", "element": "Email", "value": "test@example.com"},
@@ -37,6 +41,15 @@ SITE_ACTION_TEMPLATES: Dict[str, Dict[int, List[Dict[str, Any]]]] = {
                         {"action": "click", "element": "Sign Up"}],
              "task": "Create an account with email 'test@example.com', password 'password123', confirm password, and click Sign Up",
              "success_hints": ["Account created successfully"]},
+        ],
+        5: [
+            {"actions": [{"action": "type", "element": "Email", "value": "user@example.com"},
+                        {"action": "type", "element": "Password", "value": "securepass"},
+                        {"action": "type", "element": "Confirm Password", "value": "wrongpass"},
+                        {"action": "click", "element": "Sign Up"},
+                        {"action": "type", "element": "Confirm Password", "value": "securepass"}],
+             "task": "Enter email 'user@example.com', password 'securepass', wrong confirm password, click Sign Up to see error, then fix confirm password",
+             "success_hints": ["Password and Confirm Password must match", "securepass"]},
         ],
     },
     "todo": {
@@ -389,6 +402,10 @@ class TaskGenerator:
         to reach higher difficulty levels. For example, a difficulty 7 task
         can be created by chaining a difficulty 4 template with a difficulty 3 template.
         
+        KEY INSIGHT: Chained tasks require 0 additional LLM calls for generation
+        since they're built from known templates. The oracle still validates them,
+        but the expected_inference_calls is pre-computed from the template actions.
+        
         Args:
             site: The site to generate a task for
             target_difficulty: The target number of actions
@@ -399,101 +416,144 @@ class TaskGenerator:
         """
         import random
         
-        # Only chain for sites that support it well (stateful sites)
-        chainable_sites = {"todo", "cart", "settings"}
-        if site not in chainable_sites:
-            return None
-        
+        # Chaining works for all sites that have templates
         if site not in SITE_ACTION_TEMPLATES:
             return None
         
         site_templates = SITE_ACTION_TEMPLATES[site]
         
-        # Get available template difficulties and their action counts
+        # Get available template difficulties
         available_difficulties = sorted(site_templates.keys(), reverse=True)
         
-        # Find a combination of templates that sum to target_difficulty
-        # Use greedy approach: pick largest templates first
-        selected_templates = []
-        remaining = target_difficulty
-        
-        for diff in available_difficulties:
-            while remaining >= diff:
-                templates = site_templates[diff]
-                template = random.choice(templates)
-                selected_templates.append((diff, template))
-                remaining -= diff
-        
-        # If we couldn't exactly match the target, return None
-        if remaining != 0:
-            return None
-        
-        # Need at least 2 templates for chaining to make sense
-        if len(selected_templates) < 2:
-            return None
-        
-        # Build the chained task
-        combined_actions = []
-        combined_hints = []
-        descriptions = []
-        
-        for idx, (diff, template) in enumerate(selected_templates, start=1):
-            combined_actions.extend(template["actions"])
-            combined_hints.extend(template.get("success_hints", []))
-            descriptions.append(template["task"])
-        
-        # Create a natural chained description
-        if len(descriptions) == 2:
-            chained_description = f"First, {descriptions[0].lower()}. Then, {descriptions[1].lower()}."
-        else:
-            parts = []
-            for i, desc in enumerate(descriptions):
-                if i == 0:
-                    parts.append(f"First, {desc.lower()}")
-                elif i == len(descriptions) - 1:
-                    parts.append(f"Finally, {desc.lower()}")
-                else:
-                    parts.append(f"Then, {desc.lower()}")
-            chained_description = ". ".join(parts) + "."
-        
-        # Check if this chained description already exists
-        existing_descriptions = set()
-        for t in existing_tasks:
-            if t.site == site:
-                existing_descriptions.add(t.description.strip().lower())
-        
-        if chained_description.strip().lower() in existing_descriptions:
-            return None
-        
-        # Deduplicate hints while preserving order
-        seen_hints = set()
-        unique_hints = []
-        for hint in combined_hints:
-            if hint not in seen_hints:
-                seen_hints.add(hint)
-                unique_hints.append(hint)
-        
-        # For chained tasks, prefer hints from the final subtask (final state)
-        # Keep only the last few hints to avoid false positive completions
-        if len(unique_hints) > 3:
-            unique_hints = unique_hints[-3:]
-        
-        task = Task(
-            id=str(uuid.uuid4())[:8],
-            site=site,
-            description=chained_description,
-            success_criteria=SuccessCriteria(
-                description=f"Complete all {len(selected_templates)} subtasks in sequence ({target_difficulty} total actions)",
-                hints=unique_hints
-            ),
-            estimated_replans=2 if target_difficulty <= 5 else 3,
-            replan_reasoning=f"Chained from {len(selected_templates)} templates to reach {target_difficulty} actions"
+        # Find ALL valid combinations that sum to target_difficulty
+        # This is more robust than greedy approach
+        valid_combinations = self._find_template_combinations(
+            site_templates, target_difficulty, max_templates=3
         )
         
-        # Store the expected actions for validation
-        task.expected_actions = combined_actions
+        if not valid_combinations:
+            return None
         
-        return task
+        # Shuffle combinations to get variety
+        random.shuffle(valid_combinations)
+        
+        # Try each combination until we find one not already used
+        existing_descriptions = {t.description.strip().lower() for t in existing_tasks if t.site == site}
+        
+        for combination in valid_combinations:
+            # Build the chained task from this combination
+            combined_actions = []
+            combined_hints = []
+            descriptions = []
+            template_ids = []
+            
+            for diff, template in combination:
+                combined_actions.extend(template["actions"])
+                combined_hints.extend(template.get("success_hints", []))
+                descriptions.append(template["task"])
+                template_ids.append(f"{site}-d{diff}")
+            
+            # Create a natural chained description
+            chained_description = self._build_chained_description(descriptions)
+            
+            # Skip if already exists
+            if chained_description.strip().lower() in existing_descriptions:
+                continue
+            
+            # Deduplicate hints, keeping final state hints (last 3-4)
+            seen_hints = set()
+            unique_hints = []
+            for hint in combined_hints:
+                if hint not in seen_hints:
+                    seen_hints.add(hint)
+                    unique_hints.append(hint)
+            
+            # For chained tasks, prefer final state hints
+            if len(unique_hints) > 4:
+                unique_hints = unique_hints[-4:]
+            
+            task = Task(
+                id=str(uuid.uuid4())[:8],
+                site=site,
+                description=chained_description,
+                success_criteria=SuccessCriteria(
+                    description=f"Complete {len(combination)} subtasks in sequence ({target_difficulty} total actions)",
+                    hints=unique_hints
+                ),
+                estimated_replans=len(combination),  # One replan per subtask boundary
+                replan_reasoning=f"Chained from {len(combination)} templates: {' + '.join(f'd{d}' for d, _ in combination)}",
+                is_chained=True,
+                chained_from=template_ids
+            )
+            
+            # Store the expected actions for validation
+            task.expected_actions = combined_actions
+            
+            return task
+        
+        return None
+    
+    def _find_template_combinations(
+        self,
+        site_templates: Dict[int, List[Dict]],
+        target: int,
+        max_templates: int = 3
+    ) -> List[List[tuple]]:
+        """Find all valid combinations of templates that sum to target difficulty.
+        
+        Args:
+            site_templates: Dict of difficulty -> list of templates
+            target: Target total actions
+            max_templates: Maximum number of templates to chain
+            
+        Returns:
+            List of valid combinations, where each combination is a list of (difficulty, template) tuples
+        """
+        import random
+        
+        available_difficulties = sorted(site_templates.keys())
+        combinations = []
+        
+        def find_combos(remaining: int, current: List[tuple], start_diff: int, depth: int):
+            if remaining == 0 and len(current) >= 2:
+                combinations.append(list(current))
+                return
+            if remaining < 0 or depth >= max_templates:
+                return
+            
+            for diff in available_difficulties:
+                if diff > remaining:
+                    continue
+                templates = site_templates[diff]
+                # Pick a random template for this difficulty
+                template = random.choice(templates)
+                current.append((diff, template))
+                find_combos(remaining - diff, current, diff, depth + 1)
+                current.pop()
+        
+        find_combos(target, [], min(available_difficulties), 0)
+        return combinations
+    
+    def _build_chained_description(self, descriptions: List[str]) -> str:
+        """Build a natural language description for a chained task."""
+        if len(descriptions) == 2:
+            return f"First, {descriptions[0].lower()}. Then, {descriptions[1].lower()}."
+        
+        parts = []
+        for i, desc in enumerate(descriptions):
+            desc_lower = desc.lower()
+            # Remove leading articles/words that don't fit in sequence
+            if desc_lower.startswith("click the "):
+                desc_lower = "click the " + desc_lower[10:]
+            
+            if i == 0:
+                parts.append(f"First, {desc_lower}")
+            elif i == len(descriptions) - 1:
+                parts.append(f"Finally, {desc_lower}")
+            else:
+                parts.append(f"Then, {desc_lower}")
+        
+        return ". ".join(parts) + "."
     
     def _generate_from_llm(
         self,

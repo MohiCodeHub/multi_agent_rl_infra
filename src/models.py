@@ -125,14 +125,29 @@ class Task:
     # From oracle validation (set after validation)
     min_actions: Optional[int] = None
     oracle_tokens: Optional[int] = None
+    oracle_inference_calls: Optional[int] = None  # Actual calls made by oracle
     validated: bool = False
     
     # From template-based generation (optional)
     # Contains the expected action sequence for template-generated tasks
     expected_actions: Optional[List[Dict[str, str]]] = None
     
+    # Chaining metadata
+    is_chained: bool = False  # True if task was created by chaining templates
+    chained_from: Optional[List[str]] = None  # IDs of source tasks if chained
+    
     @property
     def expected_inference_calls(self) -> int:
+        """Expected LLM calls = number of actions (1:1 ratio)"""
+        # For template/chained tasks, use action count directly
+        if self.expected_actions:
+            return len(self.expected_actions)
+        # For validated tasks, use actual oracle calls
+        if self.oracle_inference_calls is not None:
+            return self.oracle_inference_calls
+        # Fallback to min_actions (1 call per action)
+        if self.min_actions is not None:
+            return self.min_actions
         return max(1, self.estimated_replans)
     
     def to_dict(self) -> Dict[str, Any]:
@@ -148,8 +163,11 @@ class Task:
             "replan_reasoning": self.replan_reasoning,
             "min_actions": self.min_actions,
             "oracle_tokens": self.oracle_tokens,
+            "oracle_inference_calls": self.oracle_inference_calls,
             "validated": self.validated,
-            "expected_actions": self.expected_actions
+            "expected_actions": self.expected_actions,
+            "is_chained": self.is_chained,
+            "chained_from": self.chained_from
         }
     
     @classmethod
@@ -166,8 +184,11 @@ class Task:
             replan_reasoning=data["replan_reasoning"],
             min_actions=data.get("min_actions"),
             oracle_tokens=data.get("oracle_tokens"),
+            oracle_inference_calls=data.get("oracle_inference_calls"),
             validated=data.get("validated", False),
-            expected_actions=data.get("expected_actions")
+            expected_actions=data.get("expected_actions"),
+            is_chained=data.get("is_chained", False),
+            chained_from=data.get("chained_from")
         )
 
 

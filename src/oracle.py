@@ -17,7 +17,8 @@ class OracleResult:
         tokens_used: int = 0,
         reason: str = "",
         difficulty_match: bool = True,
-        expected_steps: int = 0
+        expected_steps: int = 0,
+        inference_calls: int = 0  # Actual LLM calls made (1:1 with steps)
     ):
         self.valid = valid
         self.steps_taken = steps_taken
@@ -25,6 +26,7 @@ class OracleResult:
         self.reason = reason
         self.difficulty_match = difficulty_match
         self.expected_steps = expected_steps
+        self.inference_calls = inference_calls  # Track actual LLM calls
     
     def is_valid_for_curriculum(self, tolerance: int = 0) -> bool:
         """Check if this result is valid for curriculum building.
@@ -64,6 +66,9 @@ class Oracle:
         """
         Attempt to complete a task using single-step prediction.
         Returns validation result with ground truth difficulty.
+        
+        KEY: Each action requires exactly 1 LLM call (1:1 ratio).
+        The inference_calls field tracks actual LLM calls made.
         """
         
         url = f"{self.base_url}/{task.site}/"
@@ -75,11 +80,13 @@ class Oracle:
         
         total_tokens = 0
         actions_taken = []
+        inference_calls = 0  # Track actual LLM calls
         
         for step in range(max_steps):
-            # Oracle predicts single next action
+            # Oracle predicts single next action (1 LLM call)
             action, tokens = self._predict_action(state, task)
             total_tokens += tokens
+            inference_calls += 1  # Increment for each prediction
             
             if action is None:
                 # Oracle thinks task is complete or stuck
@@ -96,14 +103,16 @@ class Oracle:
                     valid=False,
                     steps_taken=len(actions_taken),
                     tokens_used=total_tokens,
-                    reason=f"Element not found: {action.element}"
+                    reason=f"Element not found: {action.element}",
+                    inference_calls=inference_calls
                 )
             except PageTimeoutError:
                 return OracleResult(
                     valid=False,
                     steps_taken=len(actions_taken),
                     tokens_used=total_tokens,
-                    reason="Page timeout during action"
+                    reason="Page timeout during action",
+                    inference_calls=inference_calls
                 )
             
             # Check if task is complete
@@ -125,7 +134,8 @@ class Oracle:
                     tokens_used=total_tokens,
                     reason="Task completed successfully",
                     difficulty_match=difficulty_match,
-                    expected_steps=expected
+                    expected_steps=expected,
+                    inference_calls=inference_calls
                 )
         
         # Max steps exceeded
@@ -133,7 +143,8 @@ class Oracle:
             valid=False,
             steps_taken=len(actions_taken),
             tokens_used=total_tokens,
-            reason=f"Max steps ({max_steps}) exceeded without completion"
+            reason=f"Max steps ({max_steps}) exceeded without completion",
+            inference_calls=inference_calls
         )
     
     def _predict_action(
