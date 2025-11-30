@@ -15,12 +15,37 @@ class OracleResult:
         valid: bool,
         steps_taken: int = 0,
         tokens_used: int = 0,
-        reason: str = ""
+        reason: str = "",
+        difficulty_match: bool = True,
+        expected_steps: int = 0
     ):
         self.valid = valid
         self.steps_taken = steps_taken
         self.tokens_used = tokens_used
         self.reason = reason
+        self.difficulty_match = difficulty_match
+        self.expected_steps = expected_steps
+    
+    def is_valid_for_curriculum(self, tolerance: int = 0) -> bool:
+        """Check if this result is valid for curriculum building.
+        
+        A task is valid for curriculum if:
+        1. The oracle completed it successfully
+        2. The steps taken match the expected steps (within tolerance)
+        
+        Args:
+            tolerance: Allowed deviation from expected steps (default 0 = exact match)
+            
+        Returns:
+            True if valid for curriculum, False otherwise
+        """
+        if not self.valid:
+            return False
+        
+        if self.expected_steps == 0:
+            return True
+        
+        return abs(self.steps_taken - self.expected_steps) <= tolerance
 
 
 class Oracle:
@@ -83,11 +108,16 @@ class Oracle:
             
             # Check if task is complete
             if self._check_success(state, task):
+                expected = len(task.expected_actions) if task.expected_actions else 0
+                steps = len(actions_taken)
+                difficulty_match = (expected == 0) or (steps == expected)
                 return OracleResult(
                     valid=True,
-                    steps_taken=len(actions_taken),
+                    steps_taken=steps,
                     tokens_used=total_tokens,
-                    reason="Task completed successfully"
+                    reason="Task completed successfully",
+                    difficulty_match=difficulty_match,
+                    expected_steps=expected
                 )
         
         # Max steps exceeded
