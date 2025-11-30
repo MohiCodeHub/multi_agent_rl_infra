@@ -384,8 +384,8 @@ class TaskGenerator:
         url = f"{self.base_url}/{site}/"
         state = env.reset(url)
         
-        # Generate task via LLM
-        prompt = self._build_generation_prompt(site, target_difficulty, state)
+        # Generate task via LLM, passing existing tasks to avoid duplicates
+        prompt = self._build_generation_prompt(site, target_difficulty, state, existing_tasks)
         response = self.llm.generate(prompt, temperature=0.7)
         
         # Parse response
@@ -414,17 +414,29 @@ class TaskGenerator:
         self,
         site: str,
         target_difficulty: int,
-        state: PageState
+        state: PageState,
+        existing_tasks: List[Task] = None
     ) -> str:
         """Build the prompt for task generation"""
         
         # Get few-shot examples for this difficulty
         examples = self._get_few_shot_examples(target_difficulty)
         
+        # Build list of existing task descriptions to avoid
+        avoid_list = ""
+        if existing_tasks:
+            task_descriptions = [f'  - "{t.description}"' for t in existing_tasks]
+            if task_descriptions:
+                avoid_list = f"""\nDO NOT generate any of these existing tasks:
+{chr(10).join(task_descriptions)}
+
+Generate a DIFFERENT task that requires {target_difficulty} actions.
+"""
+        
         return f"""You are generating tasks for training web agents.
 
 Website: {site}
-Target Difficulty: {target_difficulty} actions (EXACTLY {target_difficulty} sequential user actions required)
+Target Difficulty: {target_difficulty} actions (EXACTLY {target_difficulty} sequential user actions required){avoid_list}
 
 {examples}
 
