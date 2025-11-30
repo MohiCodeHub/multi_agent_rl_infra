@@ -110,6 +110,14 @@ class Oracle:
             if self._check_success(state, task):
                 expected = len(task.expected_actions) if task.expected_actions else 0
                 steps = len(actions_taken)
+                
+                # If we know how many steps this task should take,
+                # do not allow success before that many actions have been executed.
+                # This prevents early termination due to intermediate hints matching.
+                if expected > 0 and steps < expected:
+                    # Treat as not yet complete; continue planning/executing
+                    continue
+                
                 difficulty_match = (expected == 0) or (steps == expected)
                 return OracleResult(
                     valid=True,

@@ -91,19 +91,32 @@ class TaskCurriculum:
                 )
                 
                 if result.valid:
-                    # Check difficulty is acceptable
-                    # Only accept exact match OR +1 overshoot (not undershoot)
-                    # This ensures difficulty label accurately reflects minimum actions
-                    if difficulty <= result.steps_taken <= difficulty + 1:
-                        task.min_actions = result.steps_taken
-                        task.oracle_tokens = result.tokens_used
-                        task.validated = True
-                        
-                        self.pool[difficulty].append(task)
-                        seen_keys.add(key)
-                        print(f"  ✓ Task {task.id}: {result.steps_taken} steps")
+                    # For template-based tasks, use stricter validation via is_valid_for_curriculum
+                    # For LLM-generated tasks (no expected_actions), fall back to difficulty band check
+                    if result.expected_steps > 0:
+                        # Template/chained task: require exact match with expected steps
+                        if result.is_valid_for_curriculum(tolerance=0):
+                            task.min_actions = result.steps_taken
+                            task.oracle_tokens = result.tokens_used
+                            task.validated = True
+                            
+                            self.pool[difficulty].append(task)
+                            seen_keys.add(key)
+                            print(f"  ✓ Task {task.id}: {result.steps_taken}/{result.expected_steps} steps (exact match)")
+                        else:
+                            print(f"  ✗ Steps mismatch: expected {result.expected_steps}, got {result.steps_taken}")
                     else:
-                        print(f"  ✗ Difficulty mismatch: wanted {difficulty}, got {result.steps_taken}")
+                        # LLM-generated task: use difficulty band check
+                        if difficulty <= result.steps_taken <= difficulty + 1:
+                            task.min_actions = result.steps_taken
+                            task.oracle_tokens = result.tokens_used
+                            task.validated = True
+                            
+                            self.pool[difficulty].append(task)
+                            seen_keys.add(key)
+                            print(f"  ✓ Task {task.id}: {result.steps_taken} steps")
+                        else:
+                            print(f"  ✗ Difficulty mismatch: wanted {difficulty}, got {result.steps_taken}")
                 else:
                     print(f"  ✗ Validation failed: {result.reason}")
             
