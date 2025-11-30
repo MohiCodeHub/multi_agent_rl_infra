@@ -306,6 +306,12 @@ class TaskGenerator:
             task = self._generate_from_template(site, target_difficulty)
             if task is not None:
                 return task
+            
+            # Try chaining multiple templates to reach target difficulty
+            # This reduces LLM inference calls by reusing existing templates
+            chained_task = self._generate_by_chaining(site, target_difficulty)
+            if chained_task is not None:
+                return chained_task
         
         # Fall back to LLM-based generation
         return self._generate_from_llm(site, target_difficulty, env)
@@ -349,6 +355,113 @@ class TaskGenerator:
         
         # Store the expected actions for validation
         task.expected_actions = template["actions"]
+        
+        return task
+    
+    def _generate_by_chaining(
+        self,
+        site: str,
+        target_difficulty: int
+    ) -> Optional[Task]:
+        """Generate a task by chaining multiple templates together.
+        
+        This reduces LLM inference calls by combining existing templates
+        to reach higher difficulty levels. For example, a difficulty 7 task
+        can be created by chaining a difficulty 4 template with a difficulty 3 template.
+        
+        Args:
+            site: The site to generate a task for
+            target_difficulty: The target number of actions
+            
+        Returns:
+            A chained Task object or None if no valid combination found
+        """
+        import random
+        
+        # Only chain for sites that support it well (stateful sites)
+        chainable_sites = {"todo", "cart", "settings"}
+        if site not in chainable_sites:
+            return None
+        
+        if site not in SITE_ACTION_TEMPLATES:
+            return None
+        
+        site_templates = SITE_ACTION_TEMPLATES[site]
+        
+        # Get available template difficulties and their action counts
+        available_difficulties = sorted(site_templates.keys(), reverse=True)
+        
+        # Find a combination of templates that sum to target_difficulty
+        # Use greedy approach: pick largest templates first
+        selected_templates = []
+        remaining = target_difficulty
+        
+        for diff in available_difficulties:
+            while remaining >= diff:
+                templates = site_templates[diff]
+                template = random.choice(templates)
+                selected_templates.append((diff, template))
+                remaining -= diff
+        
+        # If we couldn't exactly match the target, return None
+        if remaining != 0:
+            return None
+        
+        # Need at least 2 templates for chaining to make sense
+        if len(selected_templates) < 2:
+            return None
+        
+        # Build the chained task
+        combined_actions = []
+        combined_hints = []
+        descriptions = []
+        
+        for idx, (diff, template) in enumerate(selected_templates, start=1):
+            combined_actions.extend(template["actions"])
+            combined_hints.extend(template.get("success_hints", []))
+            descriptions.append(template["task"])
+        
+        # Create a natural chained description
+        if len(descriptions) == 2:
+            chained_description = f"First, {descriptions[0].lower()}. Then, {descriptions[1].lower()}."
+        else:
+            parts = []
+            for i, desc in enumerate(descriptions):
+                if i == 0:
+                    parts.append(f"First, {desc.lower()}")
+                elif i == len(descriptions) - 1:
+                    parts.append(f"Finally, {desc.lower()}")
+                else:
+                    parts.append(f"Then, {desc.lower()}")
+            chained_description = ". ".join(parts) + "."
+        
+        # Deduplicate hints while preserving order
+        seen_hints = set()
+        unique_hints = []
+        for hint in combined_hints:
+            if hint not in seen_hints:
+                seen_hints.add(hint)
+                unique_hints.append(hint)
+        
+        # For chained tasks, prefer hints from the final subtask (final state)
+        # Keep only the last few hints to avoid false positive completions
+        if len(unique_hints) > 3:
+            unique_hints = unique_hints[-3:]
+        
+        task = Task(
+            id=str(uuid.uuid4())[:8],
+            site=site,
+            description=chained_description,
+            success_criteria=SuccessCriteria(
+                description=f"Complete all {len(selected_templates)} subtasks in sequence ({target_difficulty} total actions)",
+                hints=unique_hints
+            ),
+            estimated_replans=2 if target_difficulty <= 5 else 3,
+            replan_reasoning=f"Chained from {len(selected_templates)} templates to reach {target_difficulty} actions"
+        )
+        
+        # Store the expected actions for validation
+        task.expected_actions = combined_actions
         
         return task
     
